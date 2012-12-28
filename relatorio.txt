@@ -1,0 +1,70 @@
+SCC0261 - Multimídia: Relatório da fase 2
+
+Aline Abreu Santos		6552035
+Diogo Ferrari Meletto	5890201
+Flávio Heleno Batista	5890027
+
+Upload realizado por Flávio.
+
+Bibliotecas usadas:
+	stdio.h (printf, fopen, fclose, fwrite, fread, fseek, ftell, feof, ferror)
+	stdlib.h (malloc, free, abs)
+	string.h (strlen, strcmp)
+	math.h (floor, ceil)
+	stdint.h (uint8_t, int8_t, uint16_t, uint32_t)
+
+Estruturas de dados:
+	bmp: para armazenar os dados do bitmap, existe uma struct com os dados do cabeçalho e os pixels são armazenados numa matrix WxH, composta de pixels (RGB) de representação normal (0 a 255). Essa estrutura foi usada dado a facilidade de manipular os dados dessa forma, na hora de montar os blocos.
+	block: para armazenar os blocos, existe uma struct com a quantidade de blocos em X (W), e a quantidade de blocos em Y (H), além de uma matriz WxH, formada por uma pequena matriz de pixels (RGB) de dimensão 8x8, com representação deslocada (-128 a 127). Essa estrutura foi usada para manter uma relação entre a imagem e os blocos, facilitando as conversões.
+	vector: para armazenar os blocos, existe uma struct que armazena os vetores e os coeficientes dc.
+	list: para armazenar a lista, usamos uma lista encadeada.
+	huffman: para armazenar a tabela com os códigos de huffman, existe uma struct que armazena o valor (dado), código e número de bits usado pelo código.
+
+Algoritmos:
+	block_from_bmp: como há uma relação direta entre os dados do bitmap e os blocos, o algoritmo usado foi um laço duplo, que além de criar os blocos, já aplica o level-shift (assim evitamos que os blocos usassem inteiros de 16 bits, o dobro do necessário para a nossa representação).
+	bmp_load: para aumentar a eficiência, as três componentes de cada pixel são lidas de uma vez, evitando um acesso maior ao arquivo. Apesar de ser menos eficiente do que uma leitura completa do arquivo em uma única vez, o software foi concebido para carregar arquivos bitmap que possuam padding na sua estrutura.
+	file_write_buffered: usamos um buffer de 32 bits para reduzir o número de escritas realizadas no arquivo, aumentando a eficiência do software, mantendo a complexidade do algoritmo, uma vez que teríamos de usar máscara de bits e rotações de qualquer forma.
+	huffman: para gerar a árvore de huffman, usamos uma lista encadeada, que permite o uso controlado de memória.
+	zig-zag scan: o algoritmo foi retirado de http://rosettacode.org/wiki/Zig_Zag#C e adaptado para as necessidades do projeto, por representar uma alternativa melhor ao algoritmo de matriz indexada.
+
+Decisões:
+	Os números são codificados usando o complemento para números negativos, assim 3 será representado por 11b e -3 por 00b.
+	As definições de estrutura para representar os pixels foram movidos para o arquivo pixel.h para padronizar e centralizar as declarações.
+	A codificação por diferença gera a árvore de huffman para os coeficientes DC das componentes RGB de maneira agrupada, aumentando a taxa de compressão final.
+	A codificação por carreira gera a árvore de huffman para os coeficientes AC das componentes RGB de maneira separada, facilitando a compreensão do resultado.
+
+Matriz de quantização:
+	A matriz selecionada foi retirada de http://en.wikipedia.org/wiki/JPEG
+		16 11 10 16 24  40  51  61
+		12 12 14 19 26  58  60  55
+		14 13 16 24 40  57  69  56
+		14 17 22 29 51  87  80  62
+		18 22 37 56 68  109 103 77
+		24 35 55 64 81  104 113 92
+		49 64 78 87 103 121 120 101
+		72 92 95 98 112 100 103 99
+
+Formato do arquivo de saída:
+	campo				tamanho
+	header---------------------
+	ID					32 bits
+	Width				16 bits
+	Height				16 bits
+	DE-------------------------
+	Huff items			8 bits
+	[Item,Freq]			[8,16] bits * Huff items
+	Align				16 bits
+	DE Data				(Align * 32) bits
+	RLE(rgb)-------------------
+	Huff items			8 bits
+	[Item,Freq]			[16,8] bits * Huff items
+	Align				16 bits
+	RLE Data			(Align * 32) bits
+
+Resultados:
+	largura	altura	original	compactado	taxa
+	136		176		71862		1333		53:1
+	256		256		196662		23728		8:1
+	512		512		786486		54116		14:1
+	1280	800		3072054		18180		168:1
+	1280	800		3072054		245956		12:1
